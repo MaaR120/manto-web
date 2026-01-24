@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+
+/* --- Nueva Paleta de Colores basada en la imagen de la marca --- */
+@theme {
+  /* Fondo general (Beige piel/durazno) */
+  --color-manto-bg: #f7f1e8;
+  
+  /* NUEVO: Superficie más clara para el Navbar y tarjetas (Casi blanco crema) */
+  --color-manto-surface: #fffdf5;
+  
+  /* Resto de colores igual que antes */
+  --color-manto-teal: #1b5e63;
+  --color-manto-orange: #ff7f32;
+  --color-manto-yellow: #ffda2a;
+  --color-manto-text: #1a1a1a;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Configuraciones base del sitio */
+:root {
+  --background: var(--color-manto-bg);
+  --foreground: var(--color-manto-text);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
