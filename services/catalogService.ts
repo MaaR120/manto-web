@@ -33,5 +33,18 @@ export const catalogService = {
       productos: data as Item[], 
       total: count || 0 
     };
+  },
+  async obtenerProductoPorId(id: number) {
+    const { data, error } = await supabase
+      .from('item')
+      .select('*')
+      .eq('id', id)
+      .single(); // .single() es clave: devuelve un objeto, no un array
+
+    if (error) {
+      console.error("Error fetching producto:", error);
+      return null;
+    }
+    return data as Item;
   }
 };

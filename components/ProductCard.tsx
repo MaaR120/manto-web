@@ -9,9 +9,10 @@ import Image from "next/image"; // <--- Importamos Image
 
 interface Props {
   producto: Item;
+  onClickDetail: () => void;
 }
 
-export default function ProductCard({ producto }: Props) {
+export default function ProductCard({ producto, onClickDetail }: Props) {
   const { addToCart } = useCart();
   const [agregado, setAgregado] = useState(false);
 
@@ -23,7 +24,7 @@ export default function ProductCard({ producto }: Props) {
   };
 
   return (
-    <div className="group relative w-full bg-white/50 backdrop-blur-sm rounded-3xl border border-manto-teal/10 hover:border-manto-orange/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col overflow-hidden">
+    <div onClick={onClickDetail} className="group relative w-full bg-white/50 backdrop-blur-sm rounded-3xl border border-manto-teal/10 hover:border-manto-orange/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col overflow-hidden">
       
       {/* 1. Contenedor Principal con Padding Generoso y GAP */}
       <div className="p-6 flex flex-col items-center flex-grow gap-4">
@@ -72,9 +73,14 @@ export default function ProductCard({ producto }: Props) {
       <div className="px-6 pb-6 pt-0 mt-auto flex flex-col gap-3">
         
         {/* Botón Ver Detalle (Secundario) */}
-        <button className="w-full py-2.5 rounded-xl text-sm font-bold text-manto-teal border border-manto-teal/20 hover:bg-manto-teal/5 hover:border-manto-teal transition-colors flex items-center justify-center gap-2">
-          <Eye size={16} /> Ver Detalle
-        </button>
+
+          <button onClick={(e) => {
+            e.stopPropagation(); // Evita doble click si la card entera tuviera onClick
+            onClickDetail(); // <--- LLAMAMOS A LA FUNCIÓN DEL PADRE
+          }} 
+          className="w-full py-2.5 rounded-xl text-sm font-bold text-manto-teal border border-manto-teal/20 hover:bg-manto-teal/5 hover:border-manto-teal transition-colors flex items-center justify-center gap-2">
+            <Eye size={16} /> Ver Detalle
+          </button>
 
         {/* Botón Agregar (Principal) */}
         <button 

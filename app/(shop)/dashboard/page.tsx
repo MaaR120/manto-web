@@ -3,7 +3,7 @@ import { DashboardHeader } from "./components/DashboardHeader";
 import { ProfileCard } from "./components/ProfileCard";
 import { SubscriptionCard } from "./components/SubscriptionCard";
 import { createClient } from "@/lib/supabaseServer";
-import { OrderList } from "./components/OrderList";
+import { OrderList } from "../../../components/OrderList";
 import { redirect } from "next/navigation";
 
 // Esto fuerza a Next.js a no guardar caché vieja, para que veas cambios al instante
@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   
   const supabaseServer = await createClient();
 
-  const data = await dashboardService.obtenerDatosUsuarioLogueado(supabaseServer);
+  const data = await dashboardService.obtenerDatosDashboard(supabaseServer);
 
   if (!data) {
     redirect("/login");

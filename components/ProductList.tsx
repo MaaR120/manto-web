@@ -4,16 +4,19 @@ import { useState, useEffect } from "react";
 import ProductCard from "./ProductCard"; 
 import { Item } from "@/types";
 import { catalogService } from "@/services/catalogService"; 
+import MateIcon from "../public/icons/MateIcon";
 import { 
-  LayoutGrid, Coffee, Leaf, Pipette, Briefcase, 
+  LayoutGrid, Leaf, Briefcase, 
   ChevronLeft, ChevronRight, Loader2 
 } from "lucide-react";
+import ProductModal from "@/components/ProductModal";
+import BombillaIcon from "@/public/icons/BombillaIcon";
 
 const CATEGORIAS = [
   { id: 0, icon: LayoutGrid, label: "Todos" },
-  { id: 1, icon: Coffee, label: "Mates" },
+  { id: 1, icon: MateIcon, label: "Mates" },
   { id: 2, icon: Leaf, label: "Yerbas" },
-  { id: 3, icon: Pipette, label: "Bombillas" },
+  { id: 3, icon: BombillaIcon, label: "Bombillas" },
   { id: 4, icon: Briefcase, label: "Accesorios" },
 ];
 
@@ -23,10 +26,20 @@ export default function ProductSection() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalProductos, setTotalProductos] = useState(0);
   const [loading, setLoading] = useState(true);
+// --- NUEVO ESTADO PARA EL MODAL ---
+  const [selectedProduct, setSelectedProduct] = useState<Item | null>(null);
 
+  // --- FUNCIONES DEL MODAL ---
+  const openModal = (product: Item) => {
+    setSelectedProduct(product);
+  };
+
+  const closeModal = () => {
+    setSelectedProduct(null);
+  };
   // --- NUEVO: Estado para el límite dinámico ---
   // Empezamos con 4 (móvil) por defecto para priorizar carga rápida en cels
-  const [itemsPorPagina, setItemsPorPagina] = useState(4); 
+  const [itemsPorPagina, setItemsPorPagina] = useState(8); 
 
   // 1. DETECTOR DE PANTALLA
   useEffect(() => {
@@ -102,7 +115,7 @@ export default function ProductSection() {
                   }
                 `}
               >
-                <Icono size={24} strokeWidth={activo ? 2.5 : 2} />
+                <Icono className="w-8 h-8" /> 
               </button>
             );
           })}
@@ -121,7 +134,10 @@ export default function ProductSection() {
               
               {productos.map((producto) => (
                 <div key={producto.id} className="w-full max-w-[400px] flex justify-center">
-                    <ProductCard producto={producto} />
+                    <ProductCard 
+                    producto={producto} 
+                    onClickDetail={() => openModal(producto)}
+                    />
                 </div>
               ))}
 
@@ -171,6 +187,11 @@ export default function ProductSection() {
         )}
 
       </div>
+      <ProductModal 
+        producto={selectedProduct}
+        isOpen={!!selectedProduct} // Es true si selectedProduct no es null
+        onClose={closeModal}
+      />
     </section>
   );
 }

@@ -3,8 +3,17 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/utils/format';
 import { SupabaseClient } from '@supabase/supabase-js';
 
+// 1. Definimos la interfaz de Dirección (Igual que en tu Frontend)
+export interface AddressData {
+  calle: string;
+  altura: string;
+  piso?: string;
+  cp: string;
+  ciudad: string;
+  provincia: string;
+}
 
-// Define la forma EXACTA de los datos que devuelve tu consulta de Supabase
+// 2. Interfaces de Respuesta DB
 interface PedidoDashboard {
   id: number;
   fecha_pedido: string | null;
@@ -12,7 +21,6 @@ interface PedidoDashboard {
   estado_pedido: { 
     nombre: string 
   } | null;
-  // OJO: Supabase devuelve un array aquí porque un pedido tiene varios items
   pedido_item: { 
     cantidad: number;
     item: { 
@@ -21,70 +29,59 @@ interface PedidoDashboard {
   }[];
 }
 
+interface UpdateProfilePayload {
+  nombre: string;
+  direccion: AddressData | null;
+}
+
 export const dashboardService = {
-  async obtenerDatosUsuarioLogueado(clienteSupabase: SupabaseClient | null = null) {
+  async obtenerIdUsuarioLogueado(clienteSupabase: SupabaseClient | null = null) {
     const cliente = clienteSupabase || supabase;
 
-    // 1. Log de Auth
+    // A. Auth
     const { data: { user }, error: authError } = await cliente.auth.getUser();
-    
-    if (authError) {
-        console.log("🔴 Error de Auth:", authError.message);
-        return null;
-    }
-    
-    if (!user || !user.email) { 
-        console.log("🔴 No hay usuario o no tiene email.");
-        return null;
-    }
-    
-    console.log("🟢 Usuario Auth OK:", user.email);
+    if (authError || !user || !user.email) return null;
 
-    // 2. Log de Base de Datos
+    // B. Base de Datos
     const { data: usuarioDB, error: dbError } = await cliente 
       .from('cliente')
       .select('id')
       .eq('email', user.email)
-      .single(); // <--- Aquí puede fallar si hay más de 1 o ninguno
+      .single();
 
-    if (dbError) {
-        console.log("🔴 Error buscando en tabla Cliente:", dbError.message);
-        return null; // Probablemente sea: "Row not found"
-    }
-
-    if (!usuarioDB) {
-        console.log("🔴 El email existe en Auth, pero NO en la tabla 'cliente'.");
-        return null;
-    }
-
-    console.log("🟢 Usuario DB encontrado ID:", usuarioDB.id);
-    
-    return await this.obtenerDatosDashboard(usuarioDB.id);
+    if (dbError || !usuarioDB) return null;
+    return usuarioDB.id;
   },
 
-    async obtenerDatosDashboard(usuarioId: number) {
+  async obtenerDatosDashboard(clienteSupabase: SupabaseClient | null = null) {
+    const usuarioId = await this.obtenerIdUsuarioLogueado(clienteSupabase);
+    if (usuarioId === null) return null;
     
-    // 1. Obtener Cliente (Perfil)
-    const { data: cliente, error: errorCliente } = await supabase
-      .from('cliente') // Singular
+    // 1. Obtener Cliente (Datos básicos)
+    const { data: cliente } = await supabase
+      .from('cliente')
       .select('*')
       .eq('id', usuarioId)
       .single();
 
-    if (errorCliente) console.error("Error cliente:", errorCliente);
+    // 2. Obtener Dirección Principal (NUEVO: Desde la tabla direccion_cliente)
+    const { data: dirPrincipal } = await supabase
+      .from('direccion_cliente')
+      .select('*')
+      .eq('cliente_id', usuarioId)
+      .eq('es_principal', true)
+      .maybeSingle();
 
-    // 2. Obtener Suscripción (Si tiene)
-    // OJO: Asumimos que la tabla de estados se llama 'estado_suscripcion'
+    // 3. Obtener Suscripción
     const { data: suscripcion } = await supabase
-      .from('suscripcion') // Singular
+      .from('suscripcion')
       .select('*, estado_suscripcion(nombre)') 
       .eq('cliente_id', usuarioId)
       .maybeSingle();
 
-    // 3. Obtener Pedidos Recientes
-    // Traemos el pedido + nombre del estado + items dentro
+    // 4. Obtener Pedidos Recientes
     const { data: pedidos } = await supabase
-      .from('pedido') // Singular
+      .from('pedido')
       .select(`
         id, 
         fecha_pedido, 
@@ -96,47 +93,101 @@ export const dashboardService = {
       .order('fecha_pedido', { ascending: false })
       .limit(5);
 
-    // 4. Empaquetamos todo limpio para el Frontend
+    // 5. Mapeamos la dirección de la DB a la interfaz del Frontend
+    let direccionFormateada: AddressData | null = null;
+    if (dirPrincipal) {
+        direccionFormateada = {
+            calle: dirPrincipal.calle,
+            altura: dirPrincipal.altura,
+            piso: dirPrincipal.piso || "",
+            cp: dirPrincipal.codigo_postal, // OJO: Mapeamos codigo_postal -> cp
+            ciudad: dirPrincipal.ciudad,
+            provincia: dirPrincipal.provincia
+        };
+    }
+
+    // 6. Retornamos todo empaquetado
     return {
       usuario: {
         id: cliente?.id,
         nombre: cliente?.nombre || 'Usuario',
         email: cliente?.email || '',
-        direccion: cliente?.direccion || '',
+        // Ahora devolvemos el OBJETO, no el string viejo
+        direccion: direccionFormateada, 
         nivel: cliente?.etiqueta || 'Matero Iniciado', 
         puntos: cliente?.puntos_acumulados || 0,
       },
       suscripcion: suscripcion ? {
-        // @ ts-ignore (A veces TS se queja de los joins anidados automáticos)
         estado: suscripcion.estado_suscripcion?.nombre || 'Desconocido',
         proximoCobro: new Date(suscripcion.fecha_cobro).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' }),
         direccion: suscripcion.direccion_envio
       } : null,
-      pedidos: (pedidos || []).map((p: PedidoDashboard) => ({
-        id: `#MN-${p.id.toString().padStart(3, '0')}`,
-        fecha: p.fecha_pedido 
+      pedidos: (pedidos || []).map((p: PedidoDashboard) => ({ // Usamos any temporalmente en el map para evitar error de tipo estricto en el join
+        id: `${p.id.toString().padStart(3, '0')}`,
+        fecha_pedido: p.fecha_pedido 
         ? new Date(p.fecha_pedido).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'Fecha desconocida',
-        estado: p.estado_pedido?.nombre || 'Pendiente',
+        estado_pedido: p.estado_pedido?.nombre || 'Pendiente',
         total: formatCurrency(p.total),
-        
-        // Lógica visual corregida con nombres en SINGULAR
         descripcion: p.pedido_item.length > 0 
             ? `${p.pedido_item[0].cantidad}x ${p.pedido_item[0].item?.nombre}` + (p.pedido_item.length > 1 ? '...' : '')
             : 'Sin items'
         }))
     };
-    
   },
-  async actualizarPerfil(usuarioId: number, datos: { nombre: string; direccion: string }) {
-    const { error } = await supabase
+
+  // --- LÓGICA DE ACTUALIZACIÓN PROFESIONAL ---
+  async actualizarPerfil(usuarioId: number, data: UpdateProfilePayload) {
+    
+    // 1. Actualizamos el nombre en tabla 'cliente'
+    const { error: userError } = await supabase
       .from('cliente')
-      .update(datos)
+      .update({ nombre: data.nombre }) 
       .eq('id', usuarioId);
 
-    if (error) throw error;
+    if (userError) throw userError;
+
+    // 2. Gestionamos la dirección en tabla 'direccion_cliente'
+    if (data.direccion) {
+        
+        // A. Buscamos si ya tiene dirección principal
+        const { data: existingAddress } = await supabase
+            .from('direccion_cliente')
+            .select('id')
+            .eq('cliente_id', usuarioId)
+            .eq('es_principal', true)
+            .maybeSingle();
+
+        // B. Preparamos datos limpios
+        const datosDireccion = {
+            calle: data.direccion.calle,
+            altura: data.direccion.altura,
+            piso: data.direccion.piso || null,
+            codigo_postal: data.direccion.cp, // Mapeo inverso cp -> codigo_postal
+            ciudad: data.direccion.ciudad,
+            provincia: data.direccion.provincia,
+            es_principal: true,
+            alias: 'Casa'
+        };
+
+        if (existingAddress) {
+            // C. UPDATE
+            const { error: addrError } = await supabase
+                .from('direccion_cliente')
+                .update(datosDireccion)
+                .eq('id', existingAddress.id);
+            if (addrError) throw addrError;
+        } else {
+            // D. INSERT
+            const { error: addrError } = await supabase
+                .from('direccion_cliente')
+                .insert({
+                    cliente_id: usuarioId,
+                    ...datosDireccion
+                });
+            if (addrError) throw addrError;
+        }
+    }
     return true;
   }
-  
-  
 };

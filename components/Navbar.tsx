@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/utils/format";
+import Sol2 from '@/public/icons/Sol2';
 
 export default function Navbar() {
   const router = useRouter();

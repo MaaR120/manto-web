@@ -2,11 +2,11 @@
 import HeroBackground from "@/components/HeroBackground"; // <--- Importamos tu carrusel
 import { ArrowRight, Mail, MapPin, Instagram, Send } from "lucide-react";
 import { itemService } from "@/services/itemService";
-import ProductCard from "@/components/ProductCard"; // Importamos el componente
 import ProductList from "@/components/ProductList";
 
 export default async function Home() {
   const productos = await itemService.obtenerTodos();
+  
   return (
     <main className="min-h-screen bg-manto-bg">
 
