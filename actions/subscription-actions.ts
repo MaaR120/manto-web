@@ -20,7 +20,7 @@ export async function createSubscriptionAction(data: CheckoutData) {
   if (!user || !user.email) return { success: false, message: "No autenticado" };
 
   // 2. Obtener cliente_id de tu tabla 'cliente'
-  const { data: cliente } = await supabase.from('cliente').select('id').eq('email', user.email).single();
+  const { data: cliente } = await supabase.from('cliente').select('id').eq('id_auth', user.id).single();
   if (!cliente) return { success: false, message: "Cliente no encontrado" };
 
   // 3. Guardar el Método de Pago (La 'Tokenización')

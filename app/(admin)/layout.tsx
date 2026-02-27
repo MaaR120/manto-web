@@ -1,28 +1,54 @@
 // app/(admin)/layout.tsx
+import AdminNavbar from "@/components/AdminNavbar";
+import { createClient } from "@/lib/supabaseServer";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.log("❌ No hay usuario logueado");
+    redirect("/login");
+  }
+
+  // Debug: Ver quién es el usuario
+  console.log("🔍 Usuario Auth ID:", user.id);
+
+  const { data: usuarioDb, error } = await supabase
+    .from("cliente") // Ojo: Asegúrate que sea 'cliente' o 'usuarios' según decidiste
+    .select("rol")
+    .eq("id_auth", user.id)
+    .single();
+
+  // Debug: Ver qué devolvió la base de datos
+  console.log("🔍 Respuesta DB:", usuarioDb);
+  console.log("🔍 Error DB:", error);
+
+  if (!usuarioDb || usuarioDb.rol !== "admin") {
+    console.log("⛔ Acceso DENEGADO. Redirigiendo a home...");
+    redirect("/");
+  }
+
+  // 4. Si pasa todas las pruebas, mostramos el panel
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    // Agregamos 'flex' para que los hijos se pongan lado a lado
+    // Agregamos 'pt-20' (padding top) para que no quede escondido detrás del Navbar principal que es 'fixed'
+    <div className="flex min-h-screen bg-gray-50 pt-20">
       
-      {/* SIDEBAR (Menú lateral exclusivo de Admin) */}
-      <aside className="w-64 bg-manto-teal text-white p-6 hidden md:block">
-        <h2 className="text-2xl font-bold mb-8">MANTO <span className="text-manto-orange">Admin</span></h2>
-        <nav className="space-y-4">
-          <Link href="/admin" className="block p-2 hover:bg-white/10 rounded">Resumen</Link>
-          <Link href="/admin/ventas" className="block p-2 hover:bg-white/10 rounded">Ventas</Link>
-          <Link href="/admin/clientes" className="block p-2 hover:bg-white/10 rounded">Clientes (CRM)</Link>
-        </nav>
-      </aside>
-
-      {/* Contenido Principal del Admin */}
-      <main className="flex-1 p-8">
-        {children}
+      {/* Columna Izquierda: Tu Sidebar */}
+      <AdminNavbar />
+      
+      {/* Columna Derecha: El contenido cambiante */}
+      {/* 'flex-1' significa: "Toma todo el ancho que sobre" */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
       </main>
+
     </div>
   );
 }

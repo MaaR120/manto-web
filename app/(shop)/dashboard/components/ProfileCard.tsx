@@ -1,11 +1,12 @@
 "use client";
 import { useState } from 'react';
-import { User, MapPin, Edit2, Save, X, Loader2, Home, Building } from "lucide-react";
+import { User, MapPin, Edit2, Save, X, Loader2, Home, Phone } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { dashboardService } from '@/services/dashboardService';
 
-// Definimos la estructura exacta de la dirección
+// Sumamos el alias
 interface AddressData {
+  alias: string;
   calle: string;
   altura: string;
   piso?: string;
@@ -14,11 +15,12 @@ interface AddressData {
   provincia: string;
 }
 
+// Sumamos el teléfono
 interface UserData {
   id: number;
   nombre: string;
   email: string;
-  // Ahora direccion es un Objeto, o null si no tiene
+  telefono: string;
   direccion: AddressData | null;
 }
 
@@ -28,44 +30,31 @@ interface Props {
 
 export function ProfileCard({ initialData }: Props) {
   const [user, setUser] = useState<UserData>(initialData);
-  
-  // Estado temporal para el formulario (para poder cancelar cambios)
   const [formData, setFormData] = useState<UserData>(initialData);
-  
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
 
-  // Helper para mostrar la dirección en una sola línea bonita
-  const getFormattedAddress = (dir: AddressData | null) => {
-    if (!dir || !dir.calle) return "Sin dirección definida";
-    const pisoStr = dir.piso ? ` (Piso ${dir.piso})` : '';
-    return `${dir.calle} ${dir.altura}${pisoStr}, ${dir.ciudad}, ${dir.provincia} - CP ${dir.cp}`;
-  };
-
-  // 1. Maneja cambios en datos simples (Nombre)
   const handleBasicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 2. Maneja cambios en la dirección anidada
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       direccion: {
-        ...prev.direccion!, // Asumimos que si edita es porque inicializamos el objeto
+        ...prev.direccion!,
         [name]: value
       }
     }));
   };
 
   const handleEditClick = () => {
-    // Si el usuario no tiene dirección, inicializamos un objeto vacío para que los inputs funcionen
     if (!formData.direccion) {
       setFormData({
         ...formData,
-        direccion: { calle: '', altura: '', piso: '', cp: '', ciudad: '', provincia: 'Mendoza' }
+        direccion: { alias: '', calle: '', altura: '', piso: '', cp: '', ciudad: '', provincia: 'Mendoza' }
       });
     }
     setIsEditing(true);
@@ -74,16 +63,16 @@ export function ProfileCard({ initialData }: Props) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Enviamos el objeto completo al servicio
       await dashboardService.actualizarPerfil(user.id, {
         nombre: formData.nombre,
-        direccion: formData.direccion // El backend se encargará de guardar en la tabla direccion_cliente
+        telefono: formData.telefono,
+        direccion: formData.direccion 
       });
       
-      setUser(formData); // Actualizamos la vista local
+      setUser(formData); 
       setIsEditing(false);
       router.refresh(); 
-      alert("¡Perfil actualizado con éxito!"); // O un Toast mejor
+      alert("¡Perfil actualizado con éxito!"); 
     } catch (error) {
       console.error("Error:", error);
       alert("Error al guardar.");
@@ -93,7 +82,7 @@ export function ProfileCard({ initialData }: Props) {
   };
 
   const handleCancel = () => {
-    setFormData(user); // Revertimos al estado original
+    setFormData(user);
     setIsEditing(false);
   };
 
@@ -107,7 +96,7 @@ export function ProfileCard({ initialData }: Props) {
         </h2>
         {isEditing && (
              <span className="text-[10px] font-black tracking-widest text-manto-teal bg-manto-teal/10 px-2 py-1 rounded uppercase animate-pulse">
-                Modo Edición
+               Modo Edición
              </span>
         )}
       </div>
@@ -139,68 +128,94 @@ export function ProfileCard({ initialData }: Props) {
           </div>
         </div>
 
-        {/* --- DIRECCIÓN (La parte compleja) --- */}
+        {/* --- TELÉFONO --- */}
+        <div>
+          <label className="text-xs uppercase text-gray-400 font-bold block mb-1">Teléfono</label>
+          {isEditing ? (
+            <input 
+              name="telefono" 
+              value={formData.telefono || ''} 
+              onChange={handleBasicChange} 
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:outline-none focus:border-manto-teal focus:ring-2 focus:ring-manto-teal/10 transition-all" 
+              placeholder="Ej: 261 123 4567"
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-gray-800 font-bold text-lg">{user.telefono || <span className="text-gray-400 text-sm font-normal">Sin especificar</span>}</p>
+            </div>
+          )}
+        </div>
+
+        {/* --- DIRECCIÓN --- */}
         <div>
           <label className="text-xs uppercase text-gray-400 font-bold block mb-2 flex items-center gap-1">
              <MapPin size={12}/> Dirección de Envío
           </label>
           
           {isEditing ? (
-            /* FORMULARIO DE DIRECCIÓN */
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3 animate-in fade-in slide-in-from-top-2">
                 
+                {/* Alias */}
+                <div>
+                    <input name="alias" placeholder="Alias (Ej. Mi Casa, Trabajo)" value={formData.direccion?.alias || ''} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm font-bold text-manto-teal focus:border-manto-teal outline-none" />
+                </div>
+
                 {/* Calle y Altura */}
                 <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
-                        <input name="calle" placeholder="Calle" value={formData.direccion?.calle} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
+                        <input name="calle" placeholder="Calle" value={formData.direccion?.calle || ''} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
                     </div>
                     <div>
-                        <input name="altura" placeholder="Altura" value={formData.direccion?.altura} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
+                        <input name="altura" placeholder="Altura" value={formData.direccion?.altura || ''} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
                     </div>
                 </div>
 
-                {/* Piso, CP */}
+                {/* Piso, CP, Provincia */}
                 <div className="grid grid-cols-3 gap-3">
                     <div>
                         <input name="piso" placeholder="Piso/Depto" value={formData.direccion?.piso || ''} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
                     </div>
                     <div>
-                        <input name="cp" placeholder="CP" value={formData.direccion?.cp} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
+                        <input name="cp" placeholder="CP" value={formData.direccion?.cp || ''} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
                     </div>
                     <div>
-                         {/* Select simple de provincia */}
-                         <select name="provincia" value={formData.direccion?.provincia} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none">
+                         <select name="provincia" value={formData.direccion?.provincia || 'Mendoza'} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none">
                             <option value="Mendoza">Mendoza</option>
                             <option value="Buenos Aires">Bs As</option>
                             <option value="Cordoba">Córdoba</option>
-                            {/* ... más provincias */}
                          </select>
                     </div>
                 </div>
 
                 {/* Ciudad */}
                 <div>
-                    <input name="ciudad" placeholder="Ciudad" value={formData.direccion?.ciudad} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
+                    <input name="ciudad" placeholder="Ciudad (Ej. Godoy Cruz)" value={formData.direccion?.ciudad || ''} onChange={handleAddressChange} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-manto-teal outline-none" />
                 </div>
             </div>
           ) : (
-            /* VISTA DE DIRECCIÓN */
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-manto-teal/5 border border-manto-teal/10">
-               <div className="bg-white p-2 rounded-full shadow-sm text-manto-orange">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-manto-teal/5 border border-manto-teal/10">
+               <div className="bg-white p-2 rounded-full shadow-sm text-manto-orange mt-1">
                  <Home size={18} />
                </div>
                <div>
-                 <p className="text-gray-800 font-medium leading-tight">
-                    {user.direccion?.calle ? (
-                        <>
-                            {user.direccion.calle} {user.direccion.altura}
-                            {user.direccion.piso && <span className="text-gray-500 text-sm"> ({user.direccion.piso})</span>}
-                        </>
-                    ) : "Sin dirección guardada"}
-                 </p>
-                 <p className="text-sm text-gray-500 mt-1">
-                    {user.direccion?.ciudad ? `${user.direccion.ciudad}, ${user.direccion.provincia} (CP: ${user.direccion.cp})` : "Completa tus datos para recibir envíos."}
-                 </p>
+                 {user.direccion?.calle ? (
+                    <>
+                      {user.direccion.alias && (
+                        <p className="text-xs font-bold text-manto-orange uppercase tracking-wider mb-1">
+                          {user.direccion.alias}
+                        </p>
+                      )}
+                      <p className="text-gray-800 font-bold leading-tight">
+                         {user.direccion.calle} {user.direccion.altura}
+                         {user.direccion.piso && <span className="text-gray-500 font-normal text-sm"> ({user.direccion.piso})</span>}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                         {user.direccion.ciudad}, {user.direccion.provincia} (CP: {user.direccion.cp})
+                      </p>
+                    </>
+                 ) : (
+                    <p className="text-sm text-gray-500 italic mt-1">Completa tus datos para recibir envíos.</p>
+                 )}
                </div>
             </div>
           )}

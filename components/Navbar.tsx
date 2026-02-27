@@ -2,29 +2,78 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, Menu, User, Leaf, LogOut, Loader2, LayoutDashboard, X, Trash2, ArrowRight, Plus, Minus } from 'lucide-react'; // <--- Agregamos Plus y Minus
-import { useState } from "react";
+import { ShoppingCart, Menu, User, Leaf, LogOut, Loader2, LayoutDashboard, X, Trash2, ArrowRight, Plus, Minus } from 'lucide-react';
+import { useState, useEffect } from "react"; // <--- Importamos useEffect
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/utils/format";
-import Sol2 from '@/public/icons/Sol2';
 
-export default function Navbar() {
+interface NavbarProps {
+  isAdmin?: boolean; 
+}
+
+export default function Navbar({ isAdmin = false }: NavbarProps) {
+
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   
-  // Estado para controlar el menú desplegable del Carrito
+  // 1. ESTADO LOCAL PARA EL ADMIN (Inicializado con lo que manda el server)
+  const [isAdminState, setIsAdminState] = useState(isAdmin);
+
+  const [loading, setLoading] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Traemos updateQuantity también
   const { cart, totalItems, totalPrice, removeFromCart, updateQuantity } = useCart();
+
+  // 2. USE EFFECT: LA MAGIA DE LA SINCRONIZACIÓN
+  // Esto escucha login/logout en tiempo real para actualizar el botón sin recargar
+  useEffect(() => {
+    // Sincronizar si el prop del servidor cambia
+    setIsAdminState(isAdmin);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      
+      // Si estamos cargando (saliendo), no hacemos nada para evitar parpadeos
+      if (loading) return; 
+
+      if (event === 'SIGNED_OUT') {
+        setIsAdminState(false);
+        setIsCartOpen(false); // Cerramos el carrito por seguridad visual
+      } 
+      else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          // Consultamos el rol rápidamente desde el cliente
+          const { data } = await supabase
+            .from('cliente') // Asegúrate que sea 'cliente' o 'usuarios'
+            .select('rol')
+            .eq('id_auth', session.user.id)
+            .single();
+            
+          setIsAdminState(data?.rol === 'admin');
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isAdmin]);
+
 
   const handleLogout = async () => {
     setLoading(true);
-    await supabase.auth.signOut();
-    router.refresh();
-    router.push("/login");
+    setIsAdminState(false);
+    setIsCartOpen(false);
+
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+    window.location.href = "/login";
   };
 
   return (
@@ -45,6 +94,20 @@ export default function Navbar() {
 
           {/* Menú Desktop */}
           <div className="hidden md:flex space-x-8 items-center">
+            
+            {/* --- AQUÍ ESTÁ EL BOTÓN DE ADMIN INTEGRADO --- */}
+            {/* Usamos isAdminState (Local) en lugar de isAdmin (Server) para reactividad inmediata */}
+            {isAdminState && (
+              <Link 
+                href="/admin" 
+                className="hidden md:flex bg-black text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-gray-800 transition-colors items-center gap-2 animate-in fade-in"
+              >
+                <LayoutDashboard size={16} />
+                Admin
+              </Link>
+            )}
+            {/* ----------------------------------------- */}
+
             <Link href="/#productos" className="text-manto-teal/80 hover:text-manto-orange transition-colors font-medium">
               Nuestros Productos
             </Link>
@@ -83,8 +146,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* --- MINI CART DROPDOWN --- */}
-            {/* CORRECCIÓN 1: Agregamos 'py-4' aquí también para igualar la altura con el icono de usuario */}
+            {/* --- MINI CART DROPDOWN (TU CÓDIGO ORIGINAL CONSERVADO) --- */}
             <div className="relative py-4">
               
               <button 
@@ -141,26 +203,25 @@ export default function Navbar() {
                                    </p>
                                </div>
 
-                               {/* CORRECCIÓN 2: Controles de cantidad en el Mini Cart */}
                                <div className="flex items-center justify-between">
                                    <div className="flex items-center gap-2 bg-gray-50 rounded-md px-1 py-0.5 border border-gray-100">
-                                       <button 
-                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                            className="w-6 h-6 flex items-center justify-center text-manto-teal hover:text-manto-orange hover:bg-white rounded transition-colors disabled:opacity-30"
-                                            disabled={item.quantity <= 1}
-                                       >
-                                           <Minus size={12} />
-                                       </button>
-                                       <span className="text-xs font-bold text-gray-700 w-4 text-center">{item.quantity}</span>
-                                       <button 
-                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                            className="w-6 h-6 flex items-center justify-center text-manto-teal hover:text-manto-orange hover:bg-white rounded transition-colors"
-                                       >
-                                           <Plus size={12} />
-                                       </button>
+                                        <button 
+                                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                             className="w-6 h-6 flex items-center justify-center text-manto-teal hover:text-manto-orange hover:bg-white rounded transition-colors disabled:opacity-30"
+                                             disabled={item.quantity <= 1}
+                                        >
+                                             <Minus size={12} />
+                                        </button>
+                                        <span className="text-xs font-bold text-gray-700 w-4 text-center">{item.quantity}</span>
+                                        <button 
+                                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                             className="w-6 h-6 flex items-center justify-center text-manto-teal hover:text-manto-orange hover:bg-white rounded transition-colors"
+                                        >
+                                             <Plus size={12} />
+                                        </button>
                                    </div>
 
-                                   {/* Botón Borrar (Pequeño a la derecha) */}
+                                   {/* Botón Borrar */}
                                    <button 
                                      onClick={() => removeFromCart(item.id)}
                                      className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"

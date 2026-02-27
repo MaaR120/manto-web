@@ -1,0 +1,15 @@
+// components/AdminNavbar.tsx
+import Link from 'next/link';
+
+export default function AdminNavbar() {
+  return (
+    <aside className="w-64 bg-manto-teal text-white p-6 hidden md:block">
+    <h2 className="text-2xl font-bold mb-8">MANTO <span className="text-manto-orange">Admin</span></h2>
+    <nav className="space-y-4">
+      <Link href="/admin" className="block p-2 hover:bg-white/10 rounded">Resumen</Link>
+      <Link href="/admin/ventas" className="block p-2 hover:bg-white/10 rounded">Ventas</Link>
+      <Link href="/admin/clientes" className="block p-2 hover:bg-white/10 rounded">Clientes (CRM)</Link>
+    </nav>
+  </aside>
+  );
+}

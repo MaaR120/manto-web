@@ -1,23 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { LogOut, Loader2 } from "lucide-react";
 
 export default function LogoutButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
     setLoading(true);
-    
-    // 1. Cerramos sesión en Supabase (esto borra la cookie)
-    await supabase.auth.signOut();
-    
-    // 2. Refrescamos para limpiar caché y redirigimos al login
-    router.refresh();
-    router.push("/login");
+
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+    window.location.href = "/login";
   };
 
   return (

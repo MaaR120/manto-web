@@ -39,6 +39,7 @@ export default function ProductCard({ producto, onClickDetail }: Props) {
                 width={160} 
                 height={160}
                 className="rounded-full object-cover p-2 w-full h-full drop-shadow-sm transition-transform duration-300 group-hover:scale-110"
+                unoptimized={true}
               />
             ) : (
               <div className="flex items-center justify-center w-full h-full text-5xl">🧉</div>

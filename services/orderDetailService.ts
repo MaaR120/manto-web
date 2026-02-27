@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { formatCurrency } from "@/utils/format";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // 1. Interfaz de SALIDA (Para tu Frontend)
 export interface DTODetallePedido {
@@ -10,6 +11,7 @@ export interface DTODetallePedido {
   total: number;
   total_formateado: string;
   estado_pedido: string;
+  estado_pago: string;
   direccion_envio: string;
   items: {
     nombre_item: string;
@@ -30,6 +32,9 @@ interface PedidoDBResponse {
   total: number;
   direccion_envio: string | null;
   // Relaciones (Joins)
+  estado_pago: {
+    nombre: string;
+  } | null;
   estado_pedido: {
     nombre: string;
   } | null; 
@@ -44,13 +49,18 @@ interface PedidoDBResponse {
 }
 
 export const orderDetailService = {
-  async getOrderDetailById(orderId: number): Promise<DTODetallePedido | null> {
+  async getOrderDetailById(
+    orderId: number,
+    client: SupabaseClient | null = null
+  ): Promise<DTODetallePedido | null> {
+    const db = client || supabase;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pedido')
       .select(`
         *,
         estado_pedido ( nombre ),
+        estado_pago ( nombre ),
         pedido_item (
             cantidad,
             precio_unitario,
@@ -86,6 +96,7 @@ export const orderDetailService = {
         : "-",
 
       estado_pedido: pedido.estado_pedido?.nombre || "Desconocido",
+      estado_pago: pedido.estado_pago?.nombre || "Desconocido",
       total: pedido.total,
       total_formateado: formatCurrency(pedido.total),
       direccion_envio: pedido.direccion_envio || "Retiro en tienda",

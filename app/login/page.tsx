@@ -29,6 +29,9 @@ export default function AuthPage() {
     setLoading(true);
     setError(null);
 
+    // 1. Declaramos la variable user fuera de los bloques para poder usarla al final
+    let user = null; 
+
     try {
       if (isRegister) {
         // --- VALIDACIÓN EXTRA PARA REGISTRO ---
@@ -42,13 +45,15 @@ export default function AuthPage() {
           password,
           options: { data: { full_name: nombre } }
         });
+
         if (authError) throw authError;
         if (!authData.user) throw new Error("No se pudo crear el usuario.");
+        
+        // Asignamos el usuario registrado a la variable externa
+        user = authData.user; 
 
         // 2. Crear ficha en la tabla 'cliente'
-        // Si el email ya existía, el paso 1 hubiera fallado, así que aquí llegamos seguros.
         const { error: dbError } = await supabase.from('cliente').insert({
-          // id: authData.user.id, <--- BORRADO (Dejamos que la DB asigne ID numérico automático)
           nombre: nombre,
           email: email,
           direccion: "Sin dirección",
@@ -60,16 +65,35 @@ export default function AuthPage() {
 
       } else {
         // --- MODO LOGIN ---
-        const { error: loginError } = await supabase.auth.signInWithPassword({
+        const { data, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        
         if (loginError) throw loginError;
+        
+        // Asignamos el usuario logueado a la variable externa
+        user = data.user;
       }
 
-      // Si todo sale bien:
-      router.refresh(); 
-      router.push("/dashboard");
+      // --- LÓGICA DE REDIRECCIÓN (Ahora 'user' sí existe aquí) ---
+      if (user){
+        const {data: usuarioDb} = await supabase
+        .from("cliente") // O "usuarios", como hayas decidido llamarla
+        .select("rol")
+        .eq('id_auth', user.id)
+        .single();
+
+        if (usuarioDb?.rol === 'admin') {
+          console.log("👑 Bienvenido Jefe. Redirigiendo a /admin");
+          router.refresh(); 
+          router.push('/admin'); 
+        } else {
+          console.log("👋 Bienvenido Cliente. Redirigiendo a la tienda");
+          router.refresh();
+          router.push('/'); 
+        }
+      }
 
     } catch (error) {
       let mensaje = "Ocurrió un error inesperado.";

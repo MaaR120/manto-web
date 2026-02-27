@@ -10,6 +10,7 @@ export interface DTOPedido {
   fecha_despacho: string;
   fecha_entrega: string;
   estado_pedido: string;
+  estado_pago: string;
   total: string;
   totalNumber: number;
   descripcion: string;
@@ -24,6 +25,7 @@ interface PedidoDBResponse {
   fecha_entrega: string | null;
   total: number;
   estado_pedido: { nombre: string } | null;
+  estado_pago: { nombre: string } | null;
   suscripcion_id: boolean;
   pedido_item: {
     cantidad: number;
@@ -42,6 +44,7 @@ export const orderService = {
       .select(`
         *, 
         estado_pedido ( nombre ), 
+        estado_pago ( nombre ),
         pedido_item (
           cantidad, 
           item ( nombre )
@@ -75,6 +78,7 @@ export const orderService = {
           : "-",
 
       estado_pedido: p.estado_pedido?.nombre || 'Desconocido',
+      estado_pago: p.estado_pago?.nombre || 'Desconocido',
       
       total: formatCurrency(p.total),
       totalNumber: p.total,
