@@ -14,7 +14,7 @@ export interface DTOPedido {
   total: string;
   totalNumber: number;
   descripcion: string;
-  
+  url_pago_checkout: string | null;
 }
 
 // 2. Interfaz de ENTRADA (Para tipar lo que viene de Supabase y evitar 'any')
@@ -27,6 +27,7 @@ interface PedidoDBResponse {
   estado_pedido: { nombre: string } | null;
   estado_pago: { nombre: string } | null;
   suscripcion_id: boolean;
+  url_pago_checkout: string | null;
   pedido_item: {
     cantidad: number;
     item: { nombre: string } | null;
@@ -34,10 +35,10 @@ interface PedidoDBResponse {
 }
 
 export const orderService = {
-  
+
   async getOrdersByUser(userId: number, client: SupabaseClient | null = null): Promise<DTOPedido[]> {
-    
-    const supabaseClient = client || supabase; 
+
+    const supabaseClient = client || supabase;
 
     const { data, error } = await supabaseClient
       .from('pedido')
@@ -62,32 +63,34 @@ export const orderService = {
     const pedidosRaw = data as unknown as PedidoDBResponse[];
 
     return pedidosRaw.map((p) => ({
-      id: p.id, 
+      id: p.id,
       displayId: `#MN-${String(p.id).padStart(3, '0')}`,
-      
-      fecha_pedido: p.fecha_pedido 
-        ? new Date(p.fecha_pedido).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric'}) 
+
+      fecha_pedido: p.fecha_pedido
+        ? new Date(p.fecha_pedido).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
         : "-",
 
-      fecha_despacho: p.fecha_despacho 
-          ? new Date(p.fecha_despacho).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
-          : "-", 
-      
-      fecha_entrega: p.fecha_entrega 
-          ? new Date(p.fecha_entrega).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
-          : "-",
+      fecha_despacho: p.fecha_despacho
+        ? new Date(p.fecha_despacho).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+        : "-",
+
+      fecha_entrega: p.fecha_entrega
+        ? new Date(p.fecha_entrega).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+        : "-",
 
       estado_pedido: p.estado_pedido?.nombre || 'Desconocido',
       estado_pago: p.estado_pago?.nombre || 'Desconocido',
-      
+
       total: formatCurrency(p.total),
       totalNumber: p.total,
 
       es_suscripcion: !!p.suscripcion_id,
-      
-      descripcion: p.pedido_item?.length > 0 
-            ? `${p.pedido_item[0].cantidad}x ${p.pedido_item[0].item?.nombre || 'Producto'}` + (p.pedido_item.length > 1 ? '...' : '')
-            : 'Sin items'
+
+      url_pago_checkout: p.url_pago_checkout,
+
+      descripcion: p.pedido_item?.length > 0
+        ? `${p.pedido_item[0].cantidad}x ${p.pedido_item[0].item?.nombre || 'Producto'}` + (p.pedido_item.length > 1 ? '...' : '')
+        : 'Sin items'
     }));
   }
 };

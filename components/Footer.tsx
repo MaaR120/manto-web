@@ -3,20 +3,20 @@ import { Leaf, Instagram, Facebook, Twitter } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-manto-teal text-white border-t border-white/10">
+    <footer className="bg-manto-teal text-white border-t border-white/10 text-center md:text-left">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          
+
           {/* 1. Marca y Slogan */}
-          <div className="col-span-1 md:col-span-1">
+          <div className="col-span-1 md:col-span-1 flex flex-col items-center md:items-start">
             <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tighter mb-4">
               <Leaf className="text-manto-orange" size={24} />
               <span>MANTO.</span>
             </Link>
             <p className="text-white/60 text-sm leading-relaxed">
-              Yerba mate de autor. <br/>
-              Cultivada con respeto, <br/>
+              Yerba mate de autor. <br />
+              Cultivada con respeto, <br />
               cebada con amigos.
             </p>
           </div>

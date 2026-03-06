@@ -7,14 +7,15 @@ import { Item } from "@/types";
 export const catalogService = {
   // Agregamos 'limite' a los argumentos
   async obtenerProductosPaginados(pagina: number, categoriaId: number, limite: number) {
-    
+
     // Usamos el limite dinámico para calcular el rango
     const from = (pagina - 1) * limite;
     const to = from + limite - 1;
 
     let query = supabase
       .from('item')
-      .select('*', { count: 'exact' });
+      .select('*', { count: 'exact' })
+      .eq('activo', true);
 
     if (categoriaId !== 0) {
       query = query.eq('tipo_item_id', categoriaId);
@@ -29,9 +30,9 @@ export const catalogService = {
       return { productos: [], total: 0 };
     }
 
-    return { 
-      productos: data as Item[], 
-      total: count || 0 
+    return {
+      productos: data as Item[],
+      total: count || 0
     };
   },
   async obtenerProductoPorId(id: number) {
@@ -39,6 +40,7 @@ export const catalogService = {
       .from('item')
       .select('*')
       .eq('id', id)
+      .eq('activo', true)
       .single(); // .single() es clave: devuelve un objeto, no un array
 
     if (error) {

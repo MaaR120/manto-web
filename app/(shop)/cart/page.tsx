@@ -106,7 +106,6 @@ export default function CartPage() {
   const handleConfirmOrder = async () => {
     setLoading(true);
     try {
-      // 1. Armamos el objeto con la dirección exacta como la espera el backend
       const direccionPayload = {
         calle: selectedAddress.calle,
         altura: selectedAddress.altura,
@@ -117,26 +116,32 @@ export default function CartPage() {
         provincia: selectedAddress.provincia,
       };
 
-      // 2. Armamos el Payload completo para el Server Action
       const payload = {
         items: cart,
         total: totalPrice,
         direccion: direccionPayload,
-        guardarDireccion: selectedAlias === "nueva", // Si era nueva, le decimos al server que la guarde
+        guardarDireccion: selectedAlias === "nueva",
         proveedor_pago: paymentMethod as string
       };
 
-      // 3. Llamamos al Server Action
       const response = await createOrderAction(payload);
 
       if (!response.success) {
         throw new Error(response.message || "Error al procesar el pedido");
       }
 
-      // 4. Éxito
+      // Vaciamos el carrito (ya compramos)
       clearCart();
-      alert("¡Pedido generado con éxito! ID: #" + response.pedidoId);
-      router.push("/dashboard");
+
+      // 🚀 REDIRECCIÓN INTELIGENTE
+      if (response.initPoint) {
+        // Si eligió Mercado Pago, lo mandamos a la pasarela
+        window.location.href = response.initPoint;
+      } else {
+        // Si eligió Efectivo, le avisamos y lo mandamos al dashboard
+        alert(`¡Pedido #${response.pedidoId} generado con éxito! Prepará el efectivo para cuando llegue el repartidor.`);
+        router.push("/dashboard");
+      }
 
     } catch (error: any) {
       alert("Error: " + (error.message || "Desconocido"));

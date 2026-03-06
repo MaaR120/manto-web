@@ -28,6 +28,7 @@ interface PedidoDashboard {
   total: number;
   estado_pedido: EstadoPedidoRel;
   estado_pago: EstadoPagoRel;
+  url_pago_checkout: string | null;
   pedido_item: { cantidad: number; item: ItemRel }[];
 }
 
@@ -57,7 +58,7 @@ export const dashboardService = {
     if (usuarioId === null) return null;
 
     const db = clienteSupabase || supabase;
-    
+
     // 1. Obtener Cliente (Datos básicos)
     const { data: cliente } = await db
       .from('cliente')
@@ -65,9 +66,9 @@ export const dashboardService = {
       .eq('id', usuarioId)
       .single();
 
-      console.log("--- DEBUG DASHBOARD ---");
-      console.log("1. Usuario ID logueado:", usuarioId);
-      
+    console.log("--- DEBUG DASHBOARD ---");
+    console.log("1. Usuario ID logueado:", usuarioId);
+
     // 2. Obtener Dirección Principal
     const { data: dirPrincipal, error: dirError } = await db
       .from('direccion_cliente')
@@ -76,14 +77,14 @@ export const dashboardService = {
       .eq('es_principal', true)
       .maybeSingle();
 
-      console.log("2. Resultado Dirección:", dirPrincipal);
-      console.log("3. Error Dirección (si hay):", dirError);
-      console.log("-----------------------");
-      
+    console.log("2. Resultado Dirección:", dirPrincipal);
+    console.log("3. Error Dirección (si hay):", dirError);
+    console.log("-----------------------");
+
     // 3. Obtener Suscripción
     const { data: suscripcion } = await db
       .from('suscripcion')
-      .select('*, estado_suscripcion(nombre)') 
+      .select('*, estado_suscripcion(nombre)')
       .eq('cliente_id', usuarioId)
       .maybeSingle();
 
@@ -98,6 +99,7 @@ export const dashboardService = {
         total, 
         estado_pedido(nombre),
         estado_pago(nombre),
+        url_pago_checkout,
         pedido_item(cantidad, item(nombre))
       `)
       .eq('cliente_id', usuarioId)
@@ -110,15 +112,15 @@ export const dashboardService = {
     // 5. Mapeamos la dirección de la DB a la interfaz del Frontend
     let direccionFormateada: AddressData | null = null;
     if (dirPrincipal) {
-        direccionFormateada = {
-            calle: dirPrincipal.calle,
-            altura: dirPrincipal.altura,
-            piso: dirPrincipal.piso || "",
-            cp: dirPrincipal.codigo_postal, 
-            ciudad: dirPrincipal.ciudad,
-            provincia: dirPrincipal.provincia,
-            alias: dirPrincipal.alias || ''
-        };
+      direccionFormateada = {
+        calle: dirPrincipal.calle,
+        altura: dirPrincipal.altura,
+        piso: dirPrincipal.piso || "",
+        cp: dirPrincipal.codigo_postal,
+        ciudad: dirPrincipal.ciudad,
+        provincia: dirPrincipal.provincia,
+        alias: dirPrincipal.alias || ''
+      };
     }
 
     // 6. Retornamos todo empaquetado
@@ -128,8 +130,8 @@ export const dashboardService = {
         nombre: cliente.nombre || 'Usuario',
         email: cliente.email || '',
         telefono: cliente.telefono || '', // <--- ¡CORRECCIÓN: Agregamos el teléfono acá!
-        direccion: direccionFormateada, 
-        nivel: cliente.etiqueta || 'Matero Iniciado', 
+        direccion: direccionFormateada,
+        nivel: cliente.etiqueta || 'Matero Iniciado',
         puntos: cliente.puntos_acumulados || 0,
       },
       suscripcion: suscripcion ? {
@@ -161,6 +163,7 @@ export const dashboardService = {
           estado_pedido: estadoPedido?.nombre || 'Pendiente',
           estado_pago: estadoPago?.nombre || 'Pendiente',
           total: formatCurrency(p.total),
+          url_pago_checkout: p.url_pago_checkout,
           totalNumber: p.total,
           descripcion: items.length > 0 && firstItem
             ? `${firstItem.cantidad}x ${itemNombre ?? 'Producto'}` + (items.length > 1 ? '...' : '')
@@ -172,55 +175,55 @@ export const dashboardService = {
 
   // --- LÓGICA DE ACTUALIZACIÓN PROFESIONAL ---
   async actualizarPerfil(usuarioId: number, data: UpdateProfilePayload) {
-    
+
     // 1. Actualizamos el nombre y teléfono en tabla 'cliente'
     const { error: userError } = await supabase
       .from('cliente')
-      .update({ nombre: data.nombre, telefono: data.telefono }) 
+      .update({ nombre: data.nombre, telefono: data.telefono })
       .eq('id', usuarioId);
 
     if (userError) throw userError;
 
     // 2. Gestionamos la dirección en tabla 'direccion_cliente'
     if (data.direccion) {
-        
-        // A. Buscamos si ya tiene dirección principal
-        const { data: existingAddress } = await supabase
-            .from('direccion_cliente')
-            .select('id')
-            .eq('cliente_id', usuarioId)
-            .eq('es_principal', true)
-            .maybeSingle();
 
-        // B. Preparamos datos limpios
-        const datosDireccion = {
-            calle: data.direccion.calle,
-            altura: data.direccion.altura,
-            piso: data.direccion.piso || null,
-            codigo_postal: data.direccion.cp, 
-            ciudad: data.direccion.ciudad,
-            provincia: data.direccion.provincia,
-            es_principal: true,
-            alias: data.direccion.alias || 'Mi Casa' // <--- ¡CORRECCIÓN: Usamos el alias del form!
-        };
+      // A. Buscamos si ya tiene dirección principal
+      const { data: existingAddress } = await supabase
+        .from('direccion_cliente')
+        .select('id')
+        .eq('cliente_id', usuarioId)
+        .eq('es_principal', true)
+        .maybeSingle();
 
-        if (existingAddress) {
-            // C. UPDATE
-            const { error: addrError } = await supabase
-                .from('direccion_cliente')
-                .update(datosDireccion)
-                .eq('id', existingAddress.id);
-            if (addrError) throw addrError;
-        } else {
-            // D. INSERT
-            const { error: addrError } = await supabase
-                .from('direccion_cliente')
-                .insert({
-                    cliente_id: usuarioId,
-                    ...datosDireccion
-                });
-            if (addrError) throw addrError;
-        }
+      // B. Preparamos datos limpios
+      const datosDireccion = {
+        calle: data.direccion.calle,
+        altura: data.direccion.altura,
+        piso: data.direccion.piso || null,
+        codigo_postal: data.direccion.cp,
+        ciudad: data.direccion.ciudad,
+        provincia: data.direccion.provincia,
+        es_principal: true,
+        alias: data.direccion.alias || 'Mi Casa' // <--- ¡CORRECCIÓN: Usamos el alias del form!
+      };
+
+      if (existingAddress) {
+        // C. UPDATE
+        const { error: addrError } = await supabase
+          .from('direccion_cliente')
+          .update(datosDireccion)
+          .eq('id', existingAddress.id);
+        if (addrError) throw addrError;
+      } else {
+        // D. INSERT
+        const { error: addrError } = await supabase
+          .from('direccion_cliente')
+          .insert({
+            cliente_id: usuarioId,
+            ...datosDireccion
+          });
+        if (addrError) throw addrError;
+      }
     }
     return true;
   }

@@ -23,7 +23,7 @@ export const kpiService = async (): Promise<DashboardStats> => {
     supabase.from("cliente").select("*", { count: "exact", head: true }).neq('rol', 'admin'),
 
     // 2. Productos Totales
-    supabase.from("item").select("*", { count: "exact", head: true }),
+    supabase.from("item").select("*", { count: "exact", head: true }).eq('activo', true),
 
     // 3. Pedidos (traemos el total para sumar)
     supabase.from("pedido").select("total, estado_pago_id", { count: "exact" }),

@@ -8,6 +8,7 @@ export default function AdminNavbar() {
     <nav className="space-y-4">
       <Link href="/admin" className="block p-2 hover:bg-white/10 rounded">Resumen</Link>
       <Link href="/admin/ventas" className="block p-2 hover:bg-white/10 rounded">Ventas</Link>
+      <Link href="/admin/inventario" className="block p-2 hover:bg-white/10 rounded">Inventario</Link>
       <Link href="/admin/clientes" className="block p-2 hover:bg-white/10 rounded">Clientes (CRM)</Link>
     </nav>
   </aside>

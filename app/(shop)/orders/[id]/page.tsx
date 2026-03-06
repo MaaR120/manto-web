@@ -12,10 +12,10 @@ import {
   CalendarCheck,
 } from "lucide-react";
 
-// Importamos tus nuevas utilidades centralizadas
-import { getStatusBadge } from "@/utils/estadoPedido"; // Ajustá esta ruta si tu archivo se llama diferente
+import { getStatusBadge } from "@/utils/estadoPedido";
 import { getPaymentBadge } from "@/utils/paymentStatus";
-
+// 👇 Importamos nuestro nuevo componente de cliente
+import { OrderActions } from "./components/OrderActions";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +50,9 @@ export default async function OrderDetailPage({ params }: Props) {
     );
   }
 
+  // 👇 Calculamos si está pendiente igual que en el Dashboard
+  const isPendiente = pedido.estado_pago === 'Pendiente' && pedido.estado_pedido !== 'Cancelado';
+
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -71,8 +74,8 @@ export default async function OrderDetailPage({ params }: Props) {
 
         {/* Tarjeta Principal */}
         <div className="bg-white rounded-3xl shadow-lg overflow-hidden border border-manto-teal/10">
-          
-          {/* Header del Pedido (Actualizado con ambos Badges) */}
+
+          {/* Header del Pedido */}
           <div className="bg-manto-teal/5 p-8 border-b border-manto-teal/10 flex flex-col md:flex-row justify-between md:items-start gap-6">
             <div>
               <h1 className="text-3xl font-bold text-manto-teal mb-2">Detalle de Pedido</h1>
@@ -81,17 +84,39 @@ export default async function OrderDetailPage({ params }: Props) {
                 Creado el {pedido.fecha_pedido}
               </div>
             </div>
-            
-            {/* Contenedor de Badges */}
-            <div className="flex flex-col items-start md:items-end gap-3 bg-white/60 p-4 rounded-xl border border-manto-teal/10">
-               <div className="flex items-center gap-3 w-full justify-between md:justify-end">
-                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Logística:</span>
-                   {getStatusBadge(pedido.estado_pedido)}
-               </div>
-               <div className="flex items-center gap-3 w-full justify-between md:justify-end">
-                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pago:</span>
-                   {getPaymentBadge(pedido.estado_pago)}
-               </div>
+
+            {/* Contenedor de Badges y Botones (Side-by-Side) */}
+            <div className="flex flex-col md:flex-row items-center gap-4 bg-white/60 p-4 rounded-xl border border-manto-teal/10 w-full md:w-auto">
+
+              {/* Bloque Izquierdo: Estados */}
+              <div className="flex flex-col gap-2 w-full md:w-auto flex-grow">
+                <div className="flex items-center gap-3 justify-between md:justify-end">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Logística:</span>
+                  {getStatusBadge(pedido.estado_pedido)}
+                </div>
+                <div className="flex items-center gap-3 justify-between md:justify-end">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pago:</span>
+                  {getPaymentBadge(pedido.estado_pago)}
+                </div>
+              </div>
+
+              {/* Bloque Derecho: Botones (Solo si está pendiente) */}
+              {isPendiente && (
+                <>
+                  {/* Divisor: Vertical en PC, Horizontal en Celular (Sin márgenes que rompan el centrado) */}
+                  <div className="hidden md:block w-px bg-manto-teal/20 self-stretch"></div>
+                  <div className="md:hidden h-px bg-manto-teal/20 w-full"></div>
+
+                  {/* Contenedor de botones: Centrado en celular (justify-center), alineado natural en PC */}
+                  <div className="flex justify-center md:justify-start w-full md:w-auto pt-1 md:pt-0">
+                    <OrderActions
+                      orderId={pedido.id}
+                      urlPago={pedido.url_pago_checkout}
+                      isPendiente={isPendiente}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -148,13 +173,13 @@ export default async function OrderDetailPage({ params }: Props) {
                       <span className="text-gray-500 flex items-center gap-2">
                         <Truck size={14} /> Despacho:
                       </span>
-                      <span className="font-medium text-gray-700">{pedido.fecha_despacho}</span>
+                      <span className="font-medium text-gray-700">{pedido.fecha_despacho || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-500 flex items-center gap-2">
                         <CalendarCheck size={14} /> Entrega:
                       </span>
-                      <span className="font-medium text-gray-700">{pedido.fecha_entrega}</span>
+                      <span className="font-medium text-gray-700">{pedido.fecha_entrega || '-'}</span>
                     </div>
                   </div>
                 </div>

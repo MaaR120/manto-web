@@ -8,6 +8,7 @@ export interface DTODetallePedido {
   fecha_pedido: string;
   fecha_despacho: string;
   fecha_entrega: string;
+  url_pago_checkout: string | null;
   total: number;
   total_formateado: string;
   estado_pedido: string;
@@ -29,6 +30,7 @@ interface PedidoDBResponse {
   fecha_pedido: string | null;
   fecha_despacho: string | null;
   fecha_entrega: string | null;
+  url_pago_checkout: string | null;
   total: number;
   direccion_envio: string | null;
   // Relaciones (Joins)
@@ -37,7 +39,7 @@ interface PedidoDBResponse {
   } | null;
   estado_pedido: {
     nombre: string;
-  } | null; 
+  } | null;
   pedido_item: {
     cantidad: number;
     precio_unitario: number;
@@ -61,6 +63,7 @@ export const orderDetailService = {
         *,
         estado_pedido ( nombre ),
         estado_pago ( nombre ),
+        url_pago_checkout,
         pedido_item (
             cantidad,
             precio_unitario,
@@ -98,6 +101,7 @@ export const orderDetailService = {
       estado_pedido: pedido.estado_pedido?.nombre || "Desconocido",
       estado_pago: pedido.estado_pago?.nombre || "Desconocido",
       total: pedido.total,
+      url_pago_checkout: pedido.url_pago_checkout,
       total_formateado: formatCurrency(pedido.total),
       direccion_envio: pedido.direccion_envio || "Retiro en tienda",
 
